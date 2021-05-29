@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'posts',
     'comments',
     # 3rd-party-packages
-    'crispy_forms'
+    'crispy_forms',
+    'channels'
 ]
 
 MIDDLEWARE = [
@@ -73,7 +74,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'djangochannels.wsgi.application'
-
+ASGI_APPLICATION = "djangochannels.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
@@ -84,6 +85,8 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 
 # Password validation

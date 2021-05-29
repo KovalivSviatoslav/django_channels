@@ -8,6 +8,7 @@ authors = ["KovalivSviatoslav <kovaliv2195@gmail.com>"]
 python = "^3.9"
 Django = "^3.2.3"
 django-crispy-forms = "^1.11.2"
+channels = "^3.0.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
