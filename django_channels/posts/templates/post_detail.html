@@ -1,0 +1,36 @@
+{% extends 'posts.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+      <li class="breadcrumb-item active" aria-current="page"><a href="{% url 'posts' %}">Назад к постам</a></li>
+  </ol>
+</nav>
+    <hr>
+    <h4 class="text-center">{{ post.title }}</h4>
+    <small>опубликовано: {{ post.created_at|date:"Y-m-d" }}</small>
+    <br><br>
+    <p>{{ post.content|safe }}</p>
+    <hr>
+    <p><strong>Комментарии</strong>: <span class="badge rounded-pill bg-dark">{{ post.comments.count }}</span></p>
+    <br>
+    <div class="row">
+        {% for comment in post.comments.all %}
+            <div class="col-md-12 mt-3 mb-3">
+                <p><strong>{{ comment.author.username }}</strong> | <small>опубликовано:{{ comment.created_at|date:"Y-m-d" }}</small></p>
+                <p>{{ comment.text }}</p>
+            </div>
+        {% endfor %}
+    </div>
+    <hr>
+    {% if request.user.is_authenticated %}
+    <form action="{% url 'comments:comment-create' content_type="post" object_id=post.id %}" method="POST">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <br>
+    <input class="btn btn-primary" type="submit" value="Отправить">
+    </form>
+    {% else %}
+        <p class="text-center">Оставлять комментарии могут только авторизованные пользователи</p>
+    {% endif %}
+{% endblock content %}
