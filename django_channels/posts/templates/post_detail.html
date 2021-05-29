@@ -34,3 +34,11 @@
         <p class="text-center">Оставлять комментарии могут только авторизованные пользователи</p>
     {% endif %}
 {% endblock content %}
+
+{% block js %}
+<script>
+    const commentsConsumer = new WebSocket(
+        'ws://' + window.location.host + 'posts' + '{{ post.id }}/'
+    )
+</script>
+{% endblock js %}
