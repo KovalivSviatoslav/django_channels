@@ -28,10 +28,15 @@ class CommentsConsumer(AsyncWebsocketConsumer):
         )
 
     async def receive(self, text_data):
+        """ method takes message from client """
+        # extract message
         text_data_json = json.loads(text_data)
         comment = text_data_json['text']
 
+        # create new comment,
+        # @database_sync_to_async decorator is necessary
         new_comment = await self.create_new_comment(comment)
+
         data = {
             "author": new_comment.author.username,
             "created_at": new_comment.created_at.strftime('%Y-%m-%d %H:%m'),
@@ -47,8 +52,9 @@ class CommentsConsumer(AsyncWebsocketConsumer):
         )
 
     async def new_comment(self, event):
+        # get message that has initialized in channel_layer.group_send
         message = event["message"]
-
+        # send to client
         await self.send(
             text_data=json.dumps({
                 "message": message
