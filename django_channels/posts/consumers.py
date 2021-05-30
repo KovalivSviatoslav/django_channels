@@ -31,17 +31,27 @@ class CommentsConsumer(AsyncWebsocketConsumer):
         """ method takes message from client """
         # extract message
         text_data_json = json.loads(text_data)
-        comment = text_data_json['text']
+        comment = text_data_json.get('text', None)
+        is_typing = text_data_json.get('is_typing', None)
+        sender = text_data_json.get('sender', None)
 
         # create new comment,
         # @database_sync_to_async decorator is necessary
-        new_comment = await self.create_new_comment(comment)
+        if comment:
+            new_comment = await self.create_new_comment(comment)
+            comments_count = await self.get_comments_count()
 
-        data = {
-            "author": new_comment.author.username,
-            "created_at": new_comment.created_at.strftime('%Y-%m-%d %H:%m'),
-            "text": new_comment.text
-        }
+            data = {
+                "author": new_comment.author.username,
+                "created_at": new_comment.created_at.strftime('%Y-%m-%d %H:%m'),
+                "text": new_comment.text,
+                "comments_count": comments_count
+            }
+        elif is_typing:
+            data = {
+                'is_typing': True,
+                'sender': sender
+            }
 
         await self.channel_layer.group_send(
             self.post_group_name,
@@ -71,3 +81,8 @@ class CommentsConsumer(AsyncWebsocketConsumer):
             object_id=int(self.post_id)
         )
         return new_comment
+
+    @database_sync_to_async
+    def get_comments_count(self):
+        post = Post.objects.get(pk=self.post_id)
+        return post.comments.count()

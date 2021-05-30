@@ -4,6 +4,7 @@ from .models import Post
 
 from comments.forms import CommentForm
 
+
 class PostListView(ListView):
 
     model = Post

@@ -12,15 +12,18 @@
     <br><br>
     <p>{{ post.content|safe }}</p>
     <hr>
-    <p><strong>Комментарии</strong>: <span class="badge rounded-pill bg-dark">{{ post.comments.count }}</span></p>
+    <p><strong>Комментарии</strong>: <span id="comments-count" class="badge rounded-pill bg-dark">{{ post.comments.count }}</span></p>
     <br>
     <div class="row" id="comments-list">
         {% for comment in post.comments.all %}
-            <div class="col-md-12 mt-3 mb-3">
+            <div class="col-md-12 mt-2 mb-2">
                 <p><strong>{{ comment.author.username }}</strong> | <small>опубликовано:{{ comment.created_at|date:"Y-m-d" }}</small></p>
                 <p>{{ comment.text }}</p>
             </div>
         {% endfor %}
+    </div>
+    <div id="spinner" class="spinner-grow spinner-grow-sm" role="status" style="display: none;">
+        <span class="visually-hidden">Loading...</span>
     </div>
     <hr>
     {% if request.user.is_authenticated %}
@@ -40,18 +43,43 @@
     const commentsSocket = new WebSocket(
         'ws://' + window.location.host + '/posts/' + '{{ post.id }}/'
     )
+    const spinner = document.getElementById('spinner')
+    const currentUser = '{{ request.user }}'
+    let isTyping = false;
+
+    setInterval(function(){
+        console.log(isTyping)
+        if (!isTyping) {
+            spinner.style.display = 'none'
+        }
+        isTyping = false
+    }, 2000);
 
     commentsSocket.onmessage = function(event) {
         const data = JSON.parse(event.data);
-        const commentsList = document.getElementById('comments-list');
-        
-        commentsList.insertAdjacentHTML(
+        isTyping = data["message"].hasOwnProperty("is_typing")
+        let sender = data["message"]["sender"]
+
+        if (isTyping) {
+            if (sender != currentUser) {
+                spinner.style.display = 'block'
+            }
+        } else {
+            const commentsList = document.getElementById('comments-list');
+            const commentsCount = document.getElementById('comments-count');
+
+            commentsCount.textContent = data["message"]["comments_count"]
+
+            commentsList.insertAdjacentHTML(
             'beforeend',
             '<div class="col-md-12 mt-3 mb-3">\n' +
             '<p><strong>' + data["message"]["author"] + '</strong> | <small>опубликовано:' + data["message"]["created_at"] + '</small></p>\n' +
             '<p>' + data["message"]["text"] + '</p>\n' +
             '</div>'
-        );
+            )
+            spinner.style.display = 'none'
+    };
+        
     };
 
     document.querySelector('#send-comment').onclick = function (e) {
@@ -64,5 +92,21 @@
         }))
         message.value = ''
     }
+
+    const textArea = document.getElementById("id_text")
+    let timer = null;
+    textArea.addEventListener("input", restartTimer);
+
+    function sendInform() {
+        commentsSocket.send(JSON.stringify({
+            'is_typing': true,
+            'sender': currentUser
+        }))
+    };
+    
+    function restartTimer() {
+        clearTimeout(timer);
+        timer = setTimeout(sendInform, 300);
+    };
 </script>
 {% endblock js %}

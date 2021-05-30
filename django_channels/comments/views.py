@@ -1,12 +1,8 @@
-from django.shortcuts import render, get_object_or_404
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.views import View
 
-from posts.models import Post
-
-from .models import Comment
 from .forms import CommentForm
 
 
