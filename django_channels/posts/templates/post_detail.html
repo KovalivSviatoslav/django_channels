@@ -40,31 +40,14 @@
 
 {% block js %}
 <script>
-    const commentsSocket = new WebSocket(
+    function commentsService() {
+        const commentsSocket = new WebSocket(
         'ws://' + window.location.host + '/posts/' + '{{ post.id }}/'
-    )
-    const spinner = document.getElementById('spinner')
-    const currentUser = '{{ request.user }}'
-    let isTyping = false;
+        )
 
-    setInterval(function(){
-        console.log(isTyping)
-        if (!isTyping) {
-            spinner.style.display = 'none'
-        }
-        isTyping = false
-    }, 2000);
+        commentsSocket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
 
-    commentsSocket.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        isTyping = data["message"].hasOwnProperty("is_typing")
-        let sender = data["message"]["sender"]
-
-        if (isTyping) {
-            if (sender != currentUser) {
-                spinner.style.display = 'block'
-            }
-        } else {
             const commentsList = document.getElementById('comments-list');
             const commentsCount = document.getElementById('comments-count');
 
@@ -78,35 +61,64 @@
             '</div>'
             )
             spinner.style.display = 'none'
-    };
-        
-    };
+        };
+            
+        document.querySelector('#send-comment').onclick = function (e) {
+            e.preventDefault()
+            const message = document.querySelector("#id_text");
+            const text = message.value;
 
-    document.querySelector('#send-comment').onclick = function (e) {
-        e.preventDefault()
-        const message = document.querySelector("#id_text");
-        const text = message.value;
-
-        commentsSocket.send(JSON.stringify({
-            'text': text
-        }))
-        message.value = ''
+            commentsSocket.send(JSON.stringify({
+                'text': text
+            }))
+            message.value = ''
+        }
     }
 
-    const textArea = document.getElementById("id_text")
-    let timer = null;
-    textArea.addEventListener("input", restartTimer);
+    function typingService() {
+        const typingSocket = new WebSocket(
+        'ws://' + window.location.host + '/posts/' + '{{ post.id }}/typing-signal/'
+        )
+        const currentUser = '{{ request.user }}'
+        let isTyping = false;
 
-    function sendInform() {
-        commentsSocket.send(JSON.stringify({
-            'is_typing': true,
-            'sender': currentUser
-        }))
-    };
-    
-    function restartTimer() {
-        clearTimeout(timer);
-        timer = setTimeout(sendInform, 300);
-    };
+        setInterval(function(){
+            if (!isTyping) {
+                spinner.style.display = 'none'
+            }
+
+            isTyping = false
+        }, 2000);
+
+        typingSocket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            let sender = data["message"]["sender"]
+            isTyping = true
+
+            if (sender != currentUser) {
+                spinner.style.display = 'block'
+            }
+        };
+
+        const textArea = document.getElementById("id_text")
+        let timer = null;
+        textArea.addEventListener("input", restartTimer);
+
+        function sendInfo() {
+            typingSocket.send(JSON.stringify({
+                'sender': currentUser
+            }))
+        };
+        
+        function restartTimer() {
+            clearTimeout(timer);
+            timer = setTimeout(sendInfo, 300);
+        };
+    }
+
+    const spinner = document.getElementById('spinner')
+    commentsService();
+    typingService();
+
 </script>
 {% endblock js %}

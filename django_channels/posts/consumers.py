@@ -32,36 +32,29 @@ class CommentsConsumer(AsyncWebsocketConsumer):
         # extract message
         text_data_json = json.loads(text_data)
         comment = text_data_json.get('text', None)
-        is_typing = text_data_json.get('is_typing', None)
-        sender = text_data_json.get('sender', None)
 
         # create new comment,
         # @database_sync_to_async decorator is necessary
-        if comment:
-            new_comment = await self.create_new_comment(comment)
-            comments_count = await self.get_comments_count()
+        new_comment = await self.create_new_comment(comment)
+        comments_count = await self.get_comments_count()
 
-            data = {
-                "author": new_comment.author.username,
-                "created_at": new_comment.created_at.strftime('%Y-%m-%d %H:%m'),
-                "text": new_comment.text,
-                "comments_count": comments_count
-            }
-        elif is_typing:
-            data = {
-                'is_typing': True,
-                'sender': sender
-            }
+        data = {
+            "author": new_comment.author.username,
+            "created_at": new_comment.created_at.strftime('%Y-%m-%d %H:%m'),
+            "text": new_comment.text,
+            "comments_count": comments_count
+        }
 
         await self.channel_layer.group_send(
+            # send each user in group self.post_group_name
             self.post_group_name,
             {
-                'type': 'new_comment',
+                'type': 'send_new_comment',
                 'message': data
             }
         )
 
-    async def new_comment(self, event):
+    async def send_new_comment(self, event):
         # get message that has initialized in channel_layer.group_send
         message = event["message"]
         # send to client
@@ -86,3 +79,49 @@ class CommentsConsumer(AsyncWebsocketConsumer):
     def get_comments_count(self):
         post = Post.objects.get(pk=self.post_id)
         return post.comments.count()
+
+
+class TypingConsumer(AsyncWebsocketConsumer):
+
+    async def connect(self):
+        self.post_id = self.scope['url_route']['kwargs']['post_id']
+        self.typing_group_name = f'typing_in_{self.post_id}'
+
+        await self.channel_layer.group_add(
+            self.typing_group_name,
+            self.channel_name
+        )
+
+        await self.accept()
+
+    async def disconnect(self, code):
+        await self.channel_layer.group_discard(
+            self.typing_group_name,
+            self.channel_name
+        )
+
+    async def receive(self, text_data):
+        text_data_json = json.loads(text_data)
+        sender = text_data_json.get('sender', None)
+
+        data = {
+            'sender': sender
+        }
+
+        await self.channel_layer.group_send(
+            self.typing_group_name,
+            {
+                'type': 'send_typing_signal',
+                'message': data
+            }
+        )
+
+    async def send_typing_signal(self, event):
+        # get message that has initialized in channel_layer.group_send
+        message = event["message"]
+        # send to client
+        await self.send(
+            text_data=json.dumps({
+                "message": message
+            })
+        )
