@@ -14,7 +14,7 @@
     <hr>
     <p><strong>Комментарии</strong>: <span class="badge rounded-pill bg-dark">{{ post.comments.count }}</span></p>
     <br>
-    <div class="row">
+    <div class="row" id="comments-list">
         {% for comment in post.comments.all %}
             <div class="col-md-12 mt-3 mb-3">
                 <p><strong>{{ comment.author.username }}</strong> | <small>опубликовано:{{ comment.created_at|date:"Y-m-d" }}</small></p>
@@ -24,11 +24,11 @@
     </div>
     <hr>
     {% if request.user.is_authenticated %}
-    <form action="{% url 'comments:comment-create' content_type="post" object_id=post.id %}" method="POST">
+    <form action="{% url 'comments:comment-create' content_type="post" object_id=post.id %}" method="POST" class="mb-5">
         {% csrf_token %}
         {{ form|crispy }}
         <br>
-    <input class="btn btn-primary" type="submit" value="Отправить">
+    <input id="send-comment" class="btn btn-primary" type="submit" value="Отправить">
     </form>
     {% else %}
         <p class="text-center">Оставлять комментарии могут только авторизованные пользователи</p>
@@ -37,8 +37,32 @@
 
 {% block js %}
 <script>
-    const commentsConsumer = new WebSocket(
-        'ws://' + window.location.host + 'posts' + '{{ post.id }}/'
+    const commentsSocket = new WebSocket(
+        'ws://' + window.location.host + '/posts/' + '{{ post.id }}/'
     )
+
+    commentsSocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const commentsList = document.getElementById('comments-list');
+        
+        commentsList.insertAdjacentHTML(
+            'beforeend',
+            '<div class="col-md-12 mt-3 mb-3">\n' +
+            '<p><strong>' + data["message"]["author"] + '</strong> | <small>опубликовано:' + data["message"]["created_at"] + '</small></p>\n' +
+            '<p>' + data["message"]["text"] + '</p>\n' +
+            '</div>'
+        );
+    };
+
+    document.querySelector('#send-comment').onclick = function (e) {
+        e.preventDefault()
+        const message = document.querySelector("#id_text");
+        const text = message.value;
+
+        commentsSocket.send(JSON.stringify({
+            'text': text
+        }))
+        message.value = ''
+    }
 </script>
 {% endblock js %}
